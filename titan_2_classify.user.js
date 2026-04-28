@@ -524,12 +524,13 @@
         const categorySelect = document.getElementById('categoryFilterSelect');
         const statusSelect = document.getElementById('statusFilterSelect');
         const contactSelect = document.getElementById('contactFilterSelect');
-        const dateFilterValue = document.getElementById('dateRemarkFilter')?.value || '';
+        const dateInput = document.getElementById('dateRemarkFilter');
         if (!categorySelect || !statusSelect || !contactSelect) return;
 
         const selectedCategory = categorySelect.value;
         const selectedStatus = statusSelect.value;
         const selectedContact = contactSelect.value;
+        const selectedDate = dateInput ? dateInput.value.trim() : '';
         currentFilterCategory = selectedCategory;
         currentFilterStatus = selectedStatus;
         currentFilterContact = selectedContact;
@@ -549,6 +550,7 @@
             const category = data.category ? data.category.trim() : '';
             const status = data.isCommunicated;
             const contacts = data.contactPerson;
+            const rowDate = data.dateRemark || '';
 
             let categoryMatch = (selectedCategory === '全部' || category === selectedCategory);
             let statusMatch = false;
@@ -563,11 +565,57 @@
             }
             let contactMatch = (selectedContact === '全部' || contacts.includes(selectedContact));
 
+            // ========== 新增：智能日期匹配逻辑 ==========
             let dateMatch = true;
-            if (dateFilterValue) {
-                const rowDate = data.dateRemark || '';
-                dateMatch = (rowDate === dateFilterValue);
+            if (selectedDate) {
+                // 1. 尝试完整日期格式 YYYY-MM-DD
+                const fullMatch = selectedDate.match(/^\d{4}-\d{2}-\d{2}$/);
+                if (fullMatch) {
+                    dateMatch = (rowDate === selectedDate);
+                }
+                // 2. 尝试四位数字 MMDD（例如 0427 表示 4月27日）
+                else if (/^\d{4}$/.test(selectedDate)) {
+                    const inputMonth = parseInt(selectedDate.substring(0, 2), 10);
+                    const inputDay = parseInt(selectedDate.substring(2, 4), 10);
+                    if (inputMonth >= 1 && inputMonth <= 12 && inputDay >= 1 && inputDay <= 31) {
+                        const rowParts = rowDate.split('-');
+                        if (rowParts.length === 3) {
+                            const rowMonth = parseInt(rowParts[1], 10);
+                            const rowDay = parseInt(rowParts[2], 10);
+                            dateMatch = (rowMonth === inputMonth && rowDay === inputDay);
+                        } else {
+                            dateMatch = false;
+                        }
+                    } else {
+                        dateMatch = false;
+                    }
+                }
+                // 3. 尝试月日分隔符格式 (M.D, M-D, M/D, 支持前导零)
+                else {
+                    const mdMatch = selectedDate.match(/^(\d{1,2})[.\-/](\d{1,2})$/);
+                    if (mdMatch) {
+                        const inputMonth = parseInt(mdMatch[1], 10);
+                        const inputDay = parseInt(mdMatch[2], 10);
+                        if (inputMonth >= 1 && inputMonth <= 12 && inputDay >= 1 && inputDay <= 31) {
+                            const rowParts = rowDate.split('-');
+                            if (rowParts.length === 3) {
+                                const rowMonth = parseInt(rowParts[1], 10);
+                                const rowDay = parseInt(rowParts[2], 10);
+                                dateMatch = (rowMonth === inputMonth && rowDay === inputDay);
+                            } else {
+                                dateMatch = false;
+                            }
+                        } else {
+                            dateMatch = false;
+                        }
+                    }
+                    // 4. 其他格式直接字符串比较（保底）
+                    else {
+                        dateMatch = (rowDate === selectedDate);
+                    }
+                }
             }
+            // ====================================================
 
             row.style.display = (categoryMatch && statusMatch && contactMatch && dateMatch) ? '' : 'none';
         });
@@ -641,16 +689,16 @@
         dateLabel.textContent = '备注日期：';
         dateLabel.style.marginRight = '5px';
         dateLabel.style.fontSize = '12px';
-        
+
         const dateInput = document.createElement('input');
-        dateInput.type = 'date';
+        dateInput.type = 'text';
         dateInput.id = 'dateRemarkFilter';
         dateInput.style.padding = '4px 8px';
         dateInput.style.borderRadius = '4px';
         dateInput.style.border = '1px solid #ccc';
         dateInput.style.fontSize = '12px';
         dateInput.style.marginRight = '5px';
-        
+
         const clearDateBtn = document.createElement('button');
         clearDateBtn.textContent = '清除';
         clearDateBtn.style.padding = '4px 8px';
@@ -659,11 +707,9 @@
         clearDateBtn.style.background = '#fff';
         clearDateBtn.style.borderRadius = '4px';
         clearDateBtn.style.fontSize = '12px';
-        
-        filterContainer.appendChild(dateLabel);
-        filterContainer.appendChild(dateInput);
-        filterContainer.appendChild(clearDateBtn);
-                
+
+
+
         const refreshBtn = document.createElement('button');
         refreshBtn.textContent = '刷新列表';
         refreshBtn.style.padding = '4px 8px';
@@ -680,8 +726,11 @@
         filterContainer.appendChild(categorySelect);
         filterContainer.appendChild(contactLabel);
         filterContainer.appendChild(contactSelect);
-        filterContainer.appendChild(refreshBtn);
         parentContainer.appendChild(filterContainer);
+        filterContainer.appendChild(dateLabel);
+        filterContainer.appendChild(dateInput);
+        filterContainer.appendChild(clearDateBtn);
+        filterContainer.appendChild(refreshBtn);
 
         statusSelect.addEventListener('change', applyFilter);
         categorySelect.addEventListener('change', applyFilter);
