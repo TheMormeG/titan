@@ -524,6 +524,7 @@
         const categorySelect = document.getElementById('categoryFilterSelect');
         const statusSelect = document.getElementById('statusFilterSelect');
         const contactSelect = document.getElementById('contactFilterSelect');
+        const dateFilterValue = document.getElementById('dateRemarkFilter')?.value || '';
         if (!categorySelect || !statusSelect || !contactSelect) return;
 
         const selectedCategory = categorySelect.value;
@@ -562,7 +563,13 @@
             }
             let contactMatch = (selectedContact === '全部' || contacts.includes(selectedContact));
 
-            row.style.display = (categoryMatch && statusMatch && contactMatch) ? '' : 'none';
+            let dateMatch = true;
+            if (dateFilterValue) {
+                const rowDate = data.dateRemark || '';
+                dateMatch = (rowDate === dateFilterValue);
+            }
+
+            row.style.display = (categoryMatch && statusMatch && contactMatch && dateMatch) ? '' : 'none';
         });
     }
 
@@ -630,6 +637,33 @@
         contactSelect.style.fontSize = '12px';
         contactSelect.style.marginRight = '10px';
 
+        const dateLabel = document.createElement('span');
+        dateLabel.textContent = '备注日期：';
+        dateLabel.style.marginRight = '5px';
+        dateLabel.style.fontSize = '12px';
+        
+        const dateInput = document.createElement('input');
+        dateInput.type = 'date';
+        dateInput.id = 'dateRemarkFilter';
+        dateInput.style.padding = '4px 8px';
+        dateInput.style.borderRadius = '4px';
+        dateInput.style.border = '1px solid #ccc';
+        dateInput.style.fontSize = '12px';
+        dateInput.style.marginRight = '5px';
+        
+        const clearDateBtn = document.createElement('button');
+        clearDateBtn.textContent = '清除';
+        clearDateBtn.style.padding = '4px 8px';
+        clearDateBtn.style.cursor = 'pointer';
+        clearDateBtn.style.border = '1px solid #dcdfe6';
+        clearDateBtn.style.background = '#fff';
+        clearDateBtn.style.borderRadius = '4px';
+        clearDateBtn.style.fontSize = '12px';
+        
+        filterContainer.appendChild(dateLabel);
+        filterContainer.appendChild(dateInput);
+        filterContainer.appendChild(clearDateBtn);
+                
         const refreshBtn = document.createElement('button');
         refreshBtn.textContent = '刷新列表';
         refreshBtn.style.padding = '4px 8px';
@@ -652,6 +686,7 @@
         statusSelect.addEventListener('change', applyFilter);
         categorySelect.addEventListener('change', applyFilter);
         contactSelect.addEventListener('change', applyFilter);
+        dateInput.addEventListener('change', applyFilter);
         refreshBtn.addEventListener('click', () => {
             refreshFilterOptions();
             applyFilter();
